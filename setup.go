@@ -27,7 +27,7 @@ func New(config Config) (MQ, error) {
 
 	mq := &mq{
 		config:     config,
-		client:     NewClient(URL(config.DSN), Backoff(DefaultBackoff)),
+		client:     NewClient(URL(config.GetDSN()), Backoff(DefaultBackoff)),
 		consumers:  newConsumersRegistry(len(config.Consumers)),
 		publishers: newPublishersRegistry(len(config.Producers)),
 	}

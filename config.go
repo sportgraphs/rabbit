@@ -7,13 +7,19 @@ import (
 
 // Config describes all available options for amqp connection creation.
 type Config struct {
-	DSN                   string        `mapstructure:"dsn" json:"dsn" yaml:"dsn"`
-	ReconnectDelay        time.Duration `mapstructure:"reconnect_delay" json:"reconnect_delay" yaml:"reconnect_delay"`
-	Exchanges             Exchanges     `mapstructure:"exchanges" json:"exchanges" yaml:"exchanges"`
-	Queues                Queues        `mapstructure:"queues" json:"queues" yaml:"queues"`
-	Producers             Producers     `mapstructure:"producers" json:"producers" yaml:"producers"`
-	Consumers             Consumers     `mapstructure:"consumers" json:"consumers" yaml:"consumers"`
-	Bindings              Bindings      `mapstructure:"bindings" json:"bindings" yaml:"bindings"`
+	DSN            *string       `mapstructure:"dsn" json:"dsn" yaml:"dsn"`
+	Host           *string       `mapstructure:"host" json:"host" yaml:"host"`
+	Port           *int          `mapstructure:"port" json:"port" yaml:"port"`
+	Username       *string       `mapstructure:"username" json:"username" yaml:"username"`
+	Password       *string       `mapstructure:"password" json:"password" yaml:"password"`
+	Vhost          *string       `mapstructure:"vhost" json:"vhost" yaml:"vhost"`
+	SSL            *bool         `mapstructure:"ssl" json:"ssl" yaml:"ssl"`
+	ReconnectDelay time.Duration `mapstructure:"reconnect_delay" json:"reconnect_delay" yaml:"reconnect_delay"`
+	Exchanges      Exchanges     `mapstructure:"exchanges" json:"exchanges" yaml:"exchanges"`
+	Queues         Queues        `mapstructure:"queues" json:"queues" yaml:"queues"`
+	Producers      Producers     `mapstructure:"producers" json:"producers" yaml:"producers"`
+	Consumers      Consumers     `mapstructure:"consumers" json:"consumers" yaml:"consumers"`
+	Bindings       Bindings      `mapstructure:"bindings" json:"bindings" yaml:"bindings"`
 }
 
 // Traverses the amqpConfig tree and fixes option keys name.
@@ -22,6 +28,73 @@ func (config Config) normalize() {
 	config.Queues.normalize()
 	config.Producers.normalize()
 	config.Consumers.normalize()
+}
+
+func (config Config) GetDSN() string {
+	if config.DSN != nil {
+		return *config.DSN
+	}
+
+	host := config.hostOrDefault()
+	port := config.portOrDefault()
+	username := config.usernameOrDefault()
+	password := config.passwordOrDefault()
+	vhost := config.vhostOrDefault()
+	scheme := "amqp"
+	if config.SSL != nil && *config.SSL == true {
+		scheme = "amqps"
+	}
+
+	url := amqp.URI{
+		Username: username,
+		Password: password,
+		Vhost:    vhost,
+		Port:     port,
+		Host:     host,
+		Scheme:   scheme,
+	}
+
+	return url.String()
+}
+
+func (config Config) hostOrDefault() string {
+	if config.Host != nil {
+		return *config.Host
+	}
+
+	return "localhost"
+}
+
+func (config Config) usernameOrDefault() string {
+	if config.Username != nil {
+		return *config.Username
+	}
+
+	return "guest"
+}
+
+func (config Config) passwordOrDefault() string {
+	if config.Password != nil {
+		return *config.Password
+	}
+
+	return "guest"
+}
+
+func (config Config) vhostOrDefault() string {
+	if config.Vhost != nil {
+		return *config.Vhost
+	}
+
+	return ""
+}
+
+func (config Config) portOrDefault() int {
+	if config.Port != nil {
+		return *config.Port
+	}
+
+	return 5672
 }
 
 // Exchanges describes configuration list for exchanges.
