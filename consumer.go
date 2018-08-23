@@ -5,12 +5,13 @@ import (
 	"sync"
 	"os"
 	"fmt"
+	"context"
 )
 
 // ConsumerOpt is a consumer's functional option type
 type ConsumerOpt func(*Consumer)
 
-type ConsumerHandler func(delivery amqp.Delivery)
+type ConsumerHandler func(ctx context.Context, delivery amqp.Delivery)
 
 // Consumer holds definition for AMQP consumer
 type Consumer struct {
@@ -40,21 +41,21 @@ func (c *Consumer) Errors() <-chan error {
 	return c.errs
 }
 
-func (c *Consumer) Consume(handler ConsumerHandler) {
+func (c *Consumer) Consume(ctx context.Context, handler ConsumerHandler) {
 	c.once.Do(func() {
 		c.handler = handler
 
-		c.Run(handler)
+		c.Run(ctx, handler)
 	})
 }
 
-func (c *Consumer) Run(handler ConsumerHandler) {
+func (c *Consumer) Run(ctx context.Context, handler ConsumerHandler) {
 	go func() {
 		for {
 			select {
 			case message, ok := <-c.deliveries:
 				if ok {
-					handler(message)
+					handler(ctx, message)
 				}
 				case err := <-c.errs:
 					if err != nil {

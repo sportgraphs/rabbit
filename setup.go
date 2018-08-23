@@ -4,11 +4,12 @@ import (
 	"github.com/streadway/amqp"
 	"fmt"
 	"errors"
+	"context"
 )
 
 type MQ interface {
 	GetConsumer(name string) (*Consumer, error)
-	SetConsumerHandler(name string, handler ConsumerHandler) error
+	SetConsumerHandler(name string, ctx context.Context, handler ConsumerHandler) error
 	GetPublisher(name string) (*Publisher, error)
 	Errors() <-chan error
 	Close()
@@ -49,13 +50,13 @@ func New(config Config) (MQ, error) {
 }
 
 
-func (mq *mq) SetConsumerHandler(name string, handler ConsumerHandler) error {
+func (mq *mq) SetConsumerHandler(name string, ctx context.Context, handler ConsumerHandler) error {
 	consumer, err := mq.GetConsumer(name)
 	if err != nil {
 		return err
 	}
 
-	consumer.Consume(handler)
+	consumer.Consume(ctx, handler)
 
 	return nil
 }
@@ -65,23 +66,25 @@ func (mq *mq) GetConsumer(name string) (consumer *Consumer, err error) {
 	consumer, ok := mq.consumers.Get(name)
 	if !ok {
 		err = fmt.Errorf("consumer '%s' is not registered", name)
+		return nil, err
 	}
 
-	return
+	return consumer, nil
 }
 
 func (mq *mq) Errors() <-chan error {
 	return mq.client.Errors()
 }
 
-// GetProducer returns a producer by its name or false if producer wasn't found.
+// GetProducer returns a producer by its name or error if producer wasn't found.
 func (mq *mq) GetPublisher(name string) (publisher *Publisher, err error) {
 	publisher, ok := mq.publishers.Get(name)
 	if !ok {
 		err = fmt.Errorf("publisher '%s' is not registered", name)
+		return nil, err
 	}
 
-	return
+	return publisher, nil
 }
 
 // Shutdown all workers and close connection to the message broker.
